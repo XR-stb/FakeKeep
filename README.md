@@ -1,3 +1,5 @@
+
+
 # FakeKeep
 keep Fake 版，生成跑步记录截图，keep跑步记录生成
 
@@ -10,7 +12,7 @@ keep Fake 版，生成跑步记录截图，keep跑步记录生成
 安装好HbuildX
 
 ```shell
-git clone https://github.com/XR-stb/FakeKeep/tree/main
+git clone https://github.com/XR-stb/FakeKeep.git
 ```
 
 ```shell
@@ -20,4 +22,3 @@ npm install
 ```shell
 npm run
 ```
-
