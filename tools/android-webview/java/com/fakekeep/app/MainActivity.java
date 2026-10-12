@@ -99,8 +99,18 @@ public class MainActivity extends Activity {
             }
 
             @Override
+            public void onPageFinished(WebView view, String url) {
+                Log.i(TAG, "页面加载完成: " + url);
+            }
+
+            @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 Log.e(TAG, "加载失败 " + failingUrl + " : " + description);
+                // 把 assets 里真实存在的条目打出来。
+                // 之前踩过一个坑：aapt2 在 Windows 上把条目名写成了 assets\www\index.html（反斜杠），
+                // AssetManager 按 assets/www/index.html 找不到，页面直接 ERR_FILE_NOT_FOUND，
+                // 而 APK 看起来一切正常。有了这几行日志，一眼就能看出是路径分隔符的问题。
+                dumpAssetTree("www");
             }
         });
 
@@ -125,6 +135,20 @@ public class MainActivity extends Activity {
                 return handleLongPress();
             }
         });
+    }
+
+    /** 把 assets 下的目录结构打到 logcat，方便排查本地资源找不到的问题 */
+    private void dumpAssetTree(String dir) {
+        try {
+            String[] names = getAssets().list(dir);
+            Log.e(TAG, "assets/" + dir + " 下共 " + (names == null ? 0 : names.length) + " 项: " +
+                    (names == null ? "" : android.text.TextUtils.join(", ", names)));
+            String[] root = getAssets().list("");
+            Log.e(TAG, "assets 根目录 " + (root == null ? 0 : root.length) + " 项: " +
+                    (root == null ? "" : android.text.TextUtils.join(", ", root)));
+        } catch (Exception e) {
+            Log.e(TAG, "列举 assets 失败", e);
+        }
     }
 
     /* ----------------------------- 选图片 ----------------------------- */

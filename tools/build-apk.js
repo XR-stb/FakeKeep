@@ -19,6 +19,7 @@
 var fs = require('fs');
 var path = require('path');
 var cp = require('child_process');
+var zip = require('./zip.js');
 
 var ROOT = path.join(__dirname, '..');
 var SHELL_DIR = path.join(__dirname, 'android-webview');
@@ -204,26 +205,71 @@ function run(exe, cmdArgs, opts) {
 }
 
 /**
- * 构建后自检：APK 里必须真的有这些东西。
- * 这一步是加出来的——aapt add 曾经把 classes.dex 塞到绝对路径下，
- * 结果 APK 签名正常、体积正常、装上去直接闪退，只有查条目名才能发现。
+ * 构建后自检：直接解析 ZIP 中央目录，用**未经规范化的原始条目名**比对。
+ *
+ * 这一步是被两次翻车教出来的：
+ *   1. `aapt add` 把给它的绝对路径当条目名 -> APK 根目录没有 classes.dex -> 装上闪退
+ *   2. `aapt2 link -A` 在 Windows 上把 assets 写成 `assets\www\index.html`（反斜杠）
+ *      -> Android 的 AssetManager 找不到 -> 打开就是 ERR_FILE_NOT_FOUND
+ * 而 Python 的 zipfile 在 Windows 上会把 `\` 规范化成 `/`，用它校验会被骗过，
+ * 所以这里必须自己读原始字节。
  */
-function assertApkLayout(apk, jarExe) {
-	var res = cp.spawnSync(jarExe, ['tf', apk], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-	if (res.error) throw res.error;
-	// Windows 上 `jar tf` 会把分隔符显示成反斜杠，这里统一成正斜杠再比对
-	var names = (res.stdout || '').split(/\r?\n/).map(function (s) {
-		return s.trim().replace(/\\/g, '/');
-	});
+function assertApkLayout(apk, WWW_DIR) {
+	var info = zip.readEntries(fs.readFileSync(apk));
+	var names = info.entries.map(function (e) { return e.name; });
+
+	console.log('\n条目自检: 共 ' + names.length + ' 项');
+
+	var wrongSep = names.filter(function (n) { return n.indexOf('\\') !== -1; });
+	if (wrongSep.length) {
+		console.error('有 ' + wrongSep.length + ' 个条目名用了反斜杠，Android 会找不到这些资源：');
+		wrongSep.slice(0, 5).forEach(function (n) { console.error('   ' + JSON.stringify(n)); });
+		process.exit(6);
+	}
+
 	var required = ['AndroidManifest.xml', 'resources.arsc', 'classes.dex', 'assets/www/index.html'];
 	var missing = required.filter(function (n) { return names.indexOf(n) === -1; });
-	console.log('\n条目自检: 共 ' + names.length + ' 项');
 	if (missing.length) {
 		console.error('APK 缺少必需条目: ' + missing.join(', '));
 		console.error('（classes.dex 必须在 APK 根目录，否则安装后无法运行）');
 		process.exit(6);
 	}
-	console.log('条目自检通过: ' + required.join(' / ') + ' 均在');
+
+	var arsc = info.entries.filter(function (e) { return e.name === 'resources.arsc'; })[0];
+	if (arsc.method !== 0) {
+		console.error('resources.arsc 必须是未压缩(stored)的，否则 Android 11+ 装不上');
+		process.exit(6);
+	}
+
+	var assetCount = names.filter(function (n) { return n.indexOf('assets/www/') === 0; }).length;
+	console.log('条目自检通过: ' + required.join(' / '));
+	console.log('            assets/www 下 ' + assetCount + ' 个文件，resources.arsc 未压缩，条目名全为正斜杠');
+
+	// 再从 APK 里把入口页和轨迹页 chunk 抽出来，跟磁盘上的产物逐字节比对。
+	// 这一步证明"Android 从这个 APK 里读到的字节"就是我们编译出来的那份页面。
+	var apkBuf = fs.readFileSync(apk);
+	var checks = [
+		['assets/www/index.html', path.join(WWW_DIR, 'index.html')]
+	];
+	var trackChunk = fs.readdirSync(path.join(WWW_DIR, 'static', 'js')).filter(function (f) {
+		return /^pages-track-track\..*\.js$/.test(f);
+	})[0];
+	if (trackChunk) {
+		checks.push(['assets/www/static/js/' + trackChunk, path.join(WWW_DIR, 'static', 'js', trackChunk)]);
+	}
+	checks.forEach(function (pair) {
+		var inside = zip.readEntry(apkBuf, pair[0]);
+		var outside = fs.readFileSync(pair[1]);
+		if (!inside) {
+			console.error('APK 里读不出 ' + pair[0]);
+			process.exit(6);
+		}
+		if (!inside.equals(outside)) {
+			console.error('APK 里的 ' + pair[0] + ' 与磁盘产物不一致（' + inside.length + ' vs ' + outside.length + ' 字节）');
+			process.exit(6);
+		}
+		console.log('            已校验 ' + pair[0] + ' 与源文件逐字节一致 (' + inside.length + ' 字节)');
+	});
 }
 
 function copyDir(src, dest) {
@@ -322,7 +368,9 @@ function main() {
 	// 4. 编译资源
 	run(sdk.aapt2, ['compile', '--dir', path.join(SHELL_DIR, 'res'), '-o', path.join(BUILD_DIR, 'res.zip')]);
 
-	// 5. 链接资源 + 打包 assets，得到不含 dex 的 APK
+	// 5. 链接资源，得到不含 assets / dex 的 APK
+	//    注意：这里刻意不用 `-A assets` —— 见 tools/zip.js 顶部说明，
+	//    aapt2 在 Windows 上会把 assets 的条目名写成反斜杠。
 	run(sdk.aapt2, [
 		'link',
 		'-o', path.join(BUILD_DIR, 'base.apk'),
@@ -330,7 +378,6 @@ function main() {
 		'--manifest', path.join(SHELL_DIR, 'AndroidManifest.xml'),
 		'-R', path.join(BUILD_DIR, 'res.zip'),
 		'--auto-add-overlay',
-		'-A', path.join(BUILD_DIR, 'assets'),
 		'--min-sdk-version', MIN_SDK,
 		'--target-sdk-version', TARGET_SDK,
 		'--version-code', VERSION_CODE,
@@ -358,24 +405,29 @@ function main() {
 		sdk.d8
 	);
 
-	// 8. 把 classes.dex 塞进 APK
+	// 8. 用 Node 自己把 classes.dex 和 assets 追加进 APK
+	//    条目名完全由我们控制（正斜杠），不再受 aapt / aapt2 在 Windows 上的分隔符影响。
+	//    追加不会重压缩已有条目，所以 resources.arsc 的 stored 状态保持不变。
 	var dexFile = path.join(BUILD_DIR, 'dex', 'classes.dex');
 	if (!fs.existsSync(dexFile)) {
 		console.error('d8 没有产出 classes.dex');
 		process.exit(5);
 	}
-	if (sdk.aapt) {
-		// ⚠️ aapt add 会把"传给它的路径"原样当作 zip 内的条目名，
-		// 所以必须切到 dex 目录、只传文件名；传绝对路径会把 classes.dex
-		// 塞进 APK 里的绝对路径下，APK 就没有可执行的 dex 了（装上直接闪退）。
-		run(sdk.aapt, ['add', path.join(BUILD_DIR, 'base.apk'), 'classes.dex'],
-			{ cwd: path.join(BUILD_DIR, 'dex') });
-	} else {
-		run(jar, ['uf', path.join(BUILD_DIR, 'base.apk'), '-C', path.join(BUILD_DIR, 'dex'), 'classes.dex']);
-	}
+
+	var added = [{ name: 'classes.dex', data: fs.readFileSync(dexFile), store: true }];
+	listFiles(assetsWww, null, []).forEach(function (f) {
+		var rel = path.relative(assetsWww, f).split(path.sep).join('/');
+		added.push({ name: 'assets/www/' + rel, data: fs.readFileSync(f), store: false });
+	});
+
+	var mergedApk = path.join(BUILD_DIR, 'merged.apk');
+	fs.writeFileSync(mergedApk,
+		zip.appendEntries(fs.readFileSync(path.join(BUILD_DIR, 'base.apk')), added));
+	console.log('\n已追加 ' + added.length + ' 个条目：classes.dex + assets/www 下 ' +
+		(added.length - 1) + ' 个文件');
 
 	// 9. 对齐
-	run(sdk.zipalign, ['-f', '-p', '4', path.join(BUILD_DIR, 'base.apk'), path.join(BUILD_DIR, 'aligned.apk')]);
+	run(sdk.zipalign, ['-f', '-p', '4', mergedApk, path.join(BUILD_DIR, 'aligned.apk')]);
 
 	// 10. 签名（没有 keystore 就现场生成一个 demo keystore）
 	var keystore = args.keystore
@@ -419,7 +471,7 @@ function main() {
 	runTool(['verify', '--verbose', outApk],
 		sdk.apksignerJar, 'com.android.apksigner.ApkSignerTool', sdk.apksigner);
 	run(sdk.aapt2, ['dump', 'badging', outApk]);
-	assertApkLayout(outApk, jar);
+	assertApkLayout(outApk, www);
 
 	var size = fs.statSync(outApk).size;
 	console.log('\n' + '='.repeat(60));
