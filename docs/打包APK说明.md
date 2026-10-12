@@ -160,6 +160,34 @@ adb install -r unpackage/release/apk/FakeKeep-1.1.0-webview.apk
 
 ---
 
+## 用 CI 自动出包
+
+`.github/workflows/apk.yml` 已经配好，推 `main` 或提 PR 时自动跑：
+
+1. **verify** —— `npm run lint`（pages.json / 路由 / 模板 / 脚本语法）+ `npm test`（41 项单测）
+2. **apk** —— 装 uni-app CLI 依赖 → 编译 H5 → 打包 APK → 上传 Artifacts
+
+跑完在 Actions 页面那次运行的 Artifacts 里可以下载：
+
+- `FakeKeep-APK` —— 可安装的 APK
+- `FakeKeep-H5` —— 纯静态站点，扔到任意静态托管就是网页版
+
+GitHub 的 ubuntu runner 自带 Android SDK（build-tools + platforms），所以 CI 里不用额外装。
+
+**关于签名**：默认用现场生成的 demo 证书，所以每次 CI 出的包签名可能不同（覆盖安装会失败，
+需要先卸载）。要用固定签名，在仓库 Secrets 里配这几项即可，工作流会自动切换到正式证书：
+
+| Secret | 说明 |
+| --- | --- |
+| `FAKEKEEP_KEYSTORE_BASE64` | `.jks` 文件内容做 base64，例如 `base64 -w0 release.jks` |
+| `FAKEKEEP_KS_PASS` | keystore 口令 |
+| `FAKEKEEP_KEY_ALIAS` | 别名 |
+| `FAKEKEEP_KEY_PASS` | 私钥口令（和 keystore 口令相同可省略） |
+
+对应地，本地也可以直接：`FAKEKEEP_KS_PASS=xxx node tools/build-apk.js --keystore release.jks`。
+
+---
+
 ## 正式发布怎么做
 
 如果是要出正式包，用 HBuilderX：
