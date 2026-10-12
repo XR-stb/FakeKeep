@@ -10,6 +10,7 @@ unpackage/
 
 # 离线工具的临时输出
 tools/out/
+tools/uni-cli/.build/
 
 # 系统 / 编辑器
 .DS_Store

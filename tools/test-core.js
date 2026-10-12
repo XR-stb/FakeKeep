@@ -236,7 +236,13 @@ test('scaledLayout(1) 与设计常量一致，缩放线性', function () {
 	assert.strictEqual(b.valueSize, trackCard.LAYOUT.valueSize * 0.5);
 });
 
-/** 记录型 ctx：所有坐标都会被检查是否有限 */
+/**
+ * 记录型 ctx：所有坐标都会被检查是否有限。
+ *
+ * 刻意只提供原生 CanvasRenderingContext2D 那套接口（属性赋值、没有 setFontSize），
+ * 也就是 trackCard 里「无 setFontSize」的那条分支。uni-app CanvasContext
+ * （只有 setFontSize 权威）的适配单独用 applyFont 的单元测试覆盖。
+ */
 function createRecordingContext() {
 	var calls = [];
 	function rec(name) {
@@ -247,11 +253,11 @@ function createRecordingContext() {
 					assert.ok(isFinite(v), name + ' 收到非法数值: ' + v);
 				}
 			});
-			calls.push({ name: name, args: args });
+			calls.push({ name: name, args: args, fontSize: state.fontSize });
 		};
 	}
 	var state = { fontSize: 12 };
-	return {
+	var ctx = {
 		calls: calls,
 		state: state,
 		setFillStyle: rec('setFillStyle'),
@@ -260,7 +266,6 @@ function createRecordingContext() {
 		setLineCap: rec('setLineCap'),
 		setLineJoin: rec('setLineJoin'),
 		setGlobalAlpha: rec('setGlobalAlpha'),
-		setFontSize: function (s) { state.fontSize = s; calls.push({ name: 'setFontSize', args: [s] }); },
 		setTextAlign: rec('setTextAlign'),
 		setTextBaseline: rec('setTextBaseline'),
 		fillRect: rec('fillRect'),
@@ -271,10 +276,20 @@ function createRecordingContext() {
 		closePath: rec('closePath'),
 		fill: rec('fill'),
 		stroke: rec('stroke'),
-		fillText: rec('fillText'),
 		drawImage: rec('drawImage'),
+		fillText: function (text, x, y) {
+			calls.push({ name: 'fillText', args: [text, x, y], fontSize: state.fontSize });
+		},
 		measureText: function (t) { return { width: String(t).length * state.fontSize * 0.55 }; }
 	};
+	Object.defineProperty(ctx, 'font', {
+		get: function () { return state.fontSize + 'px sans-serif'; },
+		set: function (v) {
+			var m = /(\d+(?:\.\d+)?)px/.exec(String(v));
+			if (m) state.fontSize = parseFloat(m[1]);
+		}
+	});
+	return ctx;
 }
 
 function sampleStats() {
@@ -335,6 +350,77 @@ test('drawCard 会把全部参数与标签画出来', function () {
 	['distance', 'duration', 'pace', 'calories', 'heartRate', 'cadence', 'steps'].forEach(function (key) {
 		assert.ok(texts.indexOf(stats[key]) !== -1, '缺少数值: ' + key + '=' + stats[key]);
 	});
+});
+
+test('applyFont 同时适配 uni 的 CanvasContext 和原生 2D 上下文', function () {
+	var applyFont = trackCard.__internals.applyFont;
+
+	// uni-app 各端：setFontSize 才是权威接口，必须真的被调用，
+	// 并且返回 false 表示"请用伪粗体"，保证各端字重表现一致
+	var uniCtx = {
+		size: 0,
+		font: '',
+		setFontSize: function (s) { this.size = s; }
+	};
+	assert.strictEqual(applyFont(uniCtx, 42, true), false);
+	assert.strictEqual(uniCtx.size, 42, 'uni 上下文必须调用 setFontSize');
+
+	// 原生 2D 上下文：只能靠 ctx.font，粗体真实生效
+	var nativeCtx = {};
+	Object.defineProperty(nativeCtx, 'font', {
+		get: function () { return this._f; },
+		set: function (v) { this._f = v; }
+	});
+	assert.strictEqual(applyFont(nativeCtx, 20.18, false), true);
+	assert.strictEqual(nativeCtx.font, '20.18px sans-serif');
+	applyFont(nativeCtx, 65.6, true);
+	assert.strictEqual(nativeCtx.font, 'bold 65.6px sans-serif');
+});
+
+test('回归：每段文字都用自己该用的字号，不会被上一段污染', function () {
+	// 曾经的 bug：applyFont 用"赋值 ctx.font 再读回来"来判断粗体支持，
+	// 而 uni-app 的 CanvasContext 里 font 只是个普通属性，
+	// 于是 Math.round(size) 恰好是字号子串时会误判成功、跳过 setFontSize，
+	// 这段文字就沿用了上一段的字号（"公里"变成和距离数字一样大、
+	// 三列数值变成和标签一样小）。这里逐条钉死每个元素的字号。
+	var ctx = createRecordingContext();
+	var W = 750;
+	var stats = sampleStats();
+	trackCard.drawCard(ctx, {
+		width: W,
+		height: trackCard.DESIGN.height,
+		background: { type: 'color', color: '#FFFFFF' },
+		route: routeUtil.buildRoute('stadium', 1),
+		stats: stats,
+		title: '户外跑步',
+		datetimeText: '8月9日 07:09',
+		locationText: '西湖区'
+	});
+	var k = W / trackCard.DESIGN.width;
+	var L = trackCard.LAYOUT;
+
+	function fontSizeOf(text) {
+		var hits = ctx.calls.filter(function (c) {
+			return c.name === 'fillText' && String(c.args[0]) === text;
+		});
+		assert.ok(hits.length, '没有绘制文字: ' + text);
+		return hits[0].fontSize;
+	}
+	function assertSize(text, expected, label) {
+		var actual = fontSizeOf(text);
+		assert.ok(Math.abs(actual - expected) < 1e-6,
+			label + ' "' + text + '" 字号应为 ' + expected.toFixed(2) + '，实际 ' + actual.toFixed(2));
+	}
+
+	assertSize('户外跑步', L.pillLeft.size * k, '顶部运动类型');
+	assertSize('8月9日 07:09', L.pillRight.size * k, '顶部日期时间');
+	assertSize('距离', L.distLabel.size * k, '距离标签');
+	assertSize(stats.distance, L.distValue.size * k, '大号距离数字');
+	assertSize('公里', L.distUnit.size * k, '距离单位');   // 曾经和数字一样大
+	assertSize('西湖区', L.locationText.size * k, '地点');
+	assertSize('用时', L.labelSize * k, '数据标签');
+	assertSize(stats.duration, L.valueSize * k, '数据数值'); // 曾经和标签一样小
+	assertSize('千卡', L.unitSize * k, '数据单位');
 });
 
 test('缺失字段显示占位符而不是 undefined', function () {

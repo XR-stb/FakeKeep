@@ -1,4 +1,4 @@
-# FakeKeep
+﻿# FakeKeep
 
 Keep 风格的跑步记录生成器（uni-app / Vue2）。可以自定义跑步主页数据，也可以直接生成一张
 **运动轨迹分享卡**——改完参数点保存，图片进相册。
@@ -46,6 +46,21 @@ npm run preview     # 渲染排版预览图到 tools/out/
 npm run gen:maps    # 重新生成 static/maps/*.png 背景地图
 ```
 
+### 4. 自己打一个 APK（不需要 HBuilderX）
+
+```bash
+node tools/build-h5.js --install   # 编译 H5（首次会装编译依赖）
+node tools/build-apk.js            # 打成可安装的 APK
+```
+
+产物 `unpackage/release/apk/FakeKeep-1.1.0-webview.apk`（约 2 MB），
+`adb install -r` 即可。原理是「uni-app 编译出的 H5 + 一个原生 WebView 外壳」，
+外壳额外补上了选图片（`onShowFileChooser`）和长按存相册（MediaStore）两处原生能力。
+
+这条路胜在**无需 DCloud 账号、可复现、十几秒出包**；正式上架仍建议用 HBuilderX 云打包，
+两者用的是同一份源码。完整说明、环境要求和踩坑记录见
+[`docs/打包APK说明.md`](docs/打包APK说明.md)。
+
 ---
 
 ## 目录结构
@@ -76,9 +91,17 @@ FakeKeep/
     ├── raster.js               极简软件光栅化 + PNG 编码
     ├── map-art.js              6 种示意地图的画法
     ├── gen-maps.js             生成 static/maps/*.png
+    ├── gen-icon.js             生成 Android 启动图标
     ├── preview.js              用 canvas 桩渲染排版预览图并做排版体检
-    ├── test-core.js            39 项单元测试
-    └── check.js                项目静态检查
+    ├── test-core.js            41 项单元测试
+    ├── check.js                项目静态检查
+    ├── build-h5.js             用 uni-app CLI 编译出 H5 产物
+    ├── build-apk.js            把 H5 产物 + WebView 外壳打成可安装的 APK
+    ├── uni-cli/                uni-app CLI 构建壳（只放工具链，不放源码）
+    └── android-webview/        APK 原生外壳（一个 Activity + manifest + 图标）
+└── docs/
+    ├── ISSUE-1-轨迹截图页.md    Issue #1 的处理说明
+    └── 打包APK说明.md           不用 HBuilderX 自己出 APK 的完整说明
 ```
 
 **设计原则**：页面只负责交互和调用 uni API，所有能出错的算法都放在 `common/` 下的纯模块里，
@@ -176,9 +199,27 @@ Issue #1 原文（xy3xy3，2024-04-11）：
 | 仓库里塞了 23 MB 构建产物 | 新增 `.gitignore`，`unpackage/` 与两个 APK 不再跟踪（**本地文件不会被删**） |
 | README 的 `npm run` 是错的 | 重写构建说明 |
 
+### 又发现并修掉的一个"看不见"的 bug
+
+用无头 Chrome 把 H5 产物真正渲染出来之后，发现轨迹卡上的文字字号是错的：
+「公里」跟距离数字一样大，三列数值跟标签一样小。
+
+根因在 `common/trackCard.js` 的 `applyFont`：它原本用「赋值 `ctx.font` 再读回来」来判断
+平台是否支持粗体。但 uni-app 的 `CanvasContext` 里 **`setFontSize()` 才是真正生效的接口，
+`ctx.font` 只是个普通属性**——于是当 `Math.round(字号)` 恰好是字号字符串的子串时会误判成功、
+跳过 `setFontSize`，这段文字就沿用了上一段的字号。哪一段中招完全取决于字号数值，
+所以肉眼看像是"随机"的排版错乱。
+
+现在改成：有 `setFontSize` 就只用它（粗体统一用叠加模拟，各端一致），
+没有它（原生 2D 上下文，例如 WebView 里直接跑 H5）才用 `ctx.font`。
+并补了回归测试，逐条钉死每个元素的字号。
+
+这个 bug 在真机、小程序上同样存在——只做单元测试和静态检查是发现不了的，
+必须真的把图渲染出来看。这也是为什么这个仓库现在带上了浏览器渲染验证。
+
 ### 新增的离线工具链
 
-- `tools/test-core.js`：39 项单元测试，覆盖参数解析、配速换算、轨迹生成的不变式
+- `tools/test-core.js`：41 项单元测试，覆盖参数解析、配速换算、轨迹生成的不变式
   （点都在 [0,1] 内、同 seed 可复现、相邻点不突变、轨迹不越界）、布局常量自洽、
   绘制指令无 `NaN`、状态联动规则
 - `tools/check.js`：解析 `pages.json` / `manifest.json`、校验页面文件存在、

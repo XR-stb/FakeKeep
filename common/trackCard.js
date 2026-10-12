@@ -137,17 +137,36 @@ function setAlpha(ctx, a) {
 	else ctx.globalAlpha = a;
 }
 
-/** 设置字号/字重，返回 true 表示平台的 ctx.font 可用（粗体真实生效） */
+/**
+ * 设置字号，返回 true 表示「真实粗体已经生效，不需要伪粗体」
+ *
+ * ⚠️ 这里有一个必须记住的坑：
+ * uni-app 的 CanvasContext（H5 / App / 小程序）里，`setFontSize()` 才是真正改变
+ * 绘制字体的接口；`ctx.font` 只是一个普通属性，赋值不会影响实际绘制
+ * （但读回来是你写进去的字符串，所以"赋值再读回来校验"这种探测方式是错的——
+ * 会在 Math.round(size) 恰好是字号子串时误判成功，于是跳过 setFontSize，
+ * 结果这段文字沿用了上一段的字号）。
+ *
+ * 因此这里的策略是：
+ *   - 有 setFontSize（uni-app 各端）→ 只用它，粗体一律用伪粗体叠加，各端表现一致
+ *   - 没有 setFontSize（原生 CanvasRenderingContext2D，例如 WebView 里直接跑 H5 产物）
+ *     → 用 ctx.font，粗体真实生效
+ */
 function applyFont(ctx, size, bold) {
-	var ok = false;
+	if (typeof ctx.setFontSize === 'function') {
+		try {
+			ctx.setFontSize(size);
+		} catch (e) {
+			// 忽略：极端情况下仍然继续绘制
+		}
+		return false;
+	}
 	try {
 		ctx.font = (bold ? 'bold ' : '') + size + 'px sans-serif';
-		ok = typeof ctx.font === 'string' && ctx.font.indexOf(String(Math.round(size))) !== -1;
+		return true;
 	} catch (e) {
-		ok = false;
+		return false;
 	}
-	if (!ok && typeof ctx.setFontSize === 'function') ctx.setFontSize(size);
-	return ok;
 }
 
 function measure(ctx, text, size, bold) {

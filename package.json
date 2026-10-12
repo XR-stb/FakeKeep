@@ -9,7 +9,10 @@
     "lint": "node tools/check.js",
     "verify": "npm run lint && npm test",
     "preview": "node tools/preview.js",
-    "gen:maps": "node tools/gen-maps.js"
+    "gen:maps": "node tools/gen-maps.js",
+    "gen:icon": "node tools/gen-icon.js",
+    "h5": "node tools/build-h5.js",
+    "apk": "node tools/build-apk.js"
   },
   "keywords": [
     "uni-app",

@@ -75,7 +75,8 @@ function createContextStub(canvas, opts) {
 		setLineCap: function (v) { state.lineCap = v; },
 		setLineJoin: function (v) { state.lineJoin = v; },
 		setGlobalAlpha: function (a) { state.alpha = a; },
-		setFontSize: function (s) { state.fontSize = s; },
+		// 刻意不提供 setFontSize：这里模拟的是原生 CanvasRenderingContext2D
+		// （即 trackCard 的「无 setFontSize」分支，也是 WebView 里跑 H5 产物时的真实情况）
 		setTextAlign: function (v) { state.textAlign = v; },
 		setTextBaseline: function (v) { state.textBaseline = v; },
 

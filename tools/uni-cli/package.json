@@ -1,0 +1,49 @@
+{
+  "name": "fakekeep-uni-cli",
+  "version": "1.1.0",
+  "private": true,
+  "description": "uni-app CLI 构建壳：只提供编译工具链，不存放项目源码。源码始终是仓库根目录那一份，由 tools/build-h5.js 拷贝到 .build/src 再编译。",
+  "scripts": {
+    "build:h5": "cross-env NODE_OPTIONS=--openssl-legacy-provider NODE_ENV=production UNI_PLATFORM=h5 vue-cli-service uni-build",
+    "build:app-plus": "cross-env NODE_OPTIONS=--openssl-legacy-provider NODE_ENV=production UNI_PLATFORM=app-plus vue-cli-service uni-build"
+  },
+  "browserslist": [
+    "Android >= 5",
+    "ios >= 9",
+    "> 1%",
+    "last 2 versions"
+  ],
+  "comments": {
+    "version": "所有 @dcloudio 包必须锁在同一个版本；这里选 2.0.2-3061420221215001（HBuilderX 3.6.14），与仓库里那份旧 APK 的 compilerVersion 3.6.4 同一代，编译产物和 5+ 运行时的兼容性最好。",
+    "extra": "uni-cli-i18n 与 uni-migration 没有被 vue-cli-plugin-uni 声明成依赖，但它是运行时 require 的，不装就会在加载插件时报 MODULE_NOT_FOUND。"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "2.0.2-3061420221215001",
+    "@dcloudio/uni-app-plus": "2.0.2-3061420221215001",
+    "@dcloudio/uni-h5": "2.0.2-3061420221215001",
+    "@dcloudio/uni-i18n": "2.0.2-3061420221215001",
+    "@dcloudio/uni-stat": "2.0.2-3061420221215001",
+    "core-js": "^3.8.3",
+    "regenerator-runtime": "^0.12.1",
+    "vue": "2.6.14"
+  },
+  "devDependencies": {
+    "@dcloudio/uni-cli-i18n": "2.0.2-3061420221215001",
+    "@dcloudio/uni-cli-shared": "2.0.2-3061420221215001",
+    "@dcloudio/uni-migration": "2.0.2-3061420221215001",
+    "@dcloudio/uni-template-compiler": "2.0.2-3061420221215001",
+    "@dcloudio/vue-cli-plugin-hbuilderx": "2.0.2-3061420221215001",
+    "@dcloudio/vue-cli-plugin-uni": "2.0.2-3061420221215001",
+    "@dcloudio/vue-cli-plugin-uni-optimize": "2.0.2-3061420221215001",
+    "@dcloudio/webpack-uni-mp-loader": "2.0.2-3061420221215001",
+    "@dcloudio/webpack-uni-pages-loader": "2.0.2-3061420221215001",
+    "@vue/cli-plugin-babel": "~4.5.19",
+    "@vue/cli-service": "~4.5.19",
+    "babel-plugin-import": "^1.13.5",
+    "cross-env": "^7.0.3",
+    "postcss-comment": "^2.0.0",
+    "sass": "^1.49.8",
+    "sass-loader": "^8.0.2",
+    "vue-template-compiler": "2.6.14"
+  }
+}

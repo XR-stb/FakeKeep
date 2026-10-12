@@ -1,4 +1,4 @@
-# Issue #1 处理说明：在轨迹截图页面添加可编辑参数与背景跑步图
+﻿# Issue #1 处理说明：在轨迹截图页面添加可编辑参数与背景跑步图
 
 | 项 | 内容 |
 | --- | --- |
@@ -92,7 +92,7 @@
 
 ```bash
 npm install
-npm run verify     # 静态检查 + 39 项单元测试
+npm run verify     # 静态检查 + 41 项单元测试
 npm run preview    # 生成排版预览图到 tools/out/，并自动体检排版
 ```
 
@@ -135,5 +135,5 @@ npm run preview    # 生成排版预览图到 tools/out/，并自动体检排版
 > 明暗底图上都看得清。
 >
 > 内置地图是程序生成的示意图形（不含真实地理数据），用 `npm run gen:maps` 可以重新生成或扩展新风格。
-> 另外补了离线工具链：`npm run verify` 会跑静态检查和 39 项单元测试，
+> 另外补了离线工具链：`npm run verify` 会跑静态检查和 41 项单元测试，
 > `npm run preview` 能直接渲染出排版预览图，不需要 HBuilderX 就能验证改动。
