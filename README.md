@@ -1,4 +1,6 @@
-﻿# FakeKeep
+# FakeKeep
+
+[![Build APK](https://github.com/XR-stb/FakeKeep/actions/workflows/apk.yml/badge.svg)](https://github.com/XR-stb/FakeKeep/actions/workflows/apk.yml)
 
 Keep 风格的跑步记录生成器（uni-app / Vue2）。可以自定义跑步主页数据，也可以直接生成一张
 **运动轨迹分享卡**——改完参数点保存，图片进相册。
@@ -60,6 +62,10 @@ node tools/build-apk.js            # 打成可安装的 APK
 这条路胜在**无需 DCloud 账号、可复现、十几秒出包**；正式上架仍建议用 HBuilderX 云打包，
 两者用的是同一份源码。完整说明、环境要求和踩坑记录见
 [`docs/打包APK说明.md`](docs/打包APK说明.md)。
+
+CI 里也已经接上（`.github/workflows/apk.yml`）：每次推 `main` / 提 PR 会自动跑
+静态检查 + 单元测试，然后编译 H5 并打出 APK，在 Actions 的 Artifacts 里可以直接下载
+`FakeKeep-APK` 和 `FakeKeep-H5`。
 
 ---
 

@@ -29,8 +29,11 @@ var VERSION_CODE = '110';
 var VERSION_NAME = '1.1.0';
 var MIN_SDK = '21';
 var TARGET_SDK = '34';
-var KEYSTORE_PASS = 'fakekeep';
-var KEY_ALIAS = 'fakekeep';
+// 签名参数：想用正式证书就从环境变量覆盖（CI 里从 Secrets 注入），
+// 不配的话现场生成一个 demo 证书，仅供安装测试
+var KEYSTORE_PASS = process.env.FAKEKEEP_KS_PASS || 'fakekeep';
+var KEY_ALIAS = process.env.FAKEKEEP_KEY_ALIAS || 'fakekeep';
+var KEY_PASS = process.env.FAKEKEEP_KEY_PASS || KEYSTORE_PASS;
 
 /* ------------------------------ 参数 ------------------------------ */
 
@@ -443,7 +446,7 @@ function main() {
 			'-keysize', '2048',
 			'-validity', '10000',
 			'-storepass', KEYSTORE_PASS,
-			'-keypass', KEYSTORE_PASS,
+			'-keypass', KEY_PASS,
 			'-dname', 'CN=FakeKeep,OU=Demo,O=FakeKeep,C=CN'
 		], { cwd: BUILD_DIR });
 	}
@@ -459,7 +462,7 @@ function main() {
 		'--ks', keystore,
 		'--ks-key-alias', KEY_ALIAS,
 		'--ks-pass', 'pass:' + KEYSTORE_PASS,
-		'--key-pass', 'pass:' + KEYSTORE_PASS,
+		'--key-pass', 'pass:' + KEY_PASS,
 		'--v1-signing-enabled', 'true',
 		'--v2-signing-enabled', 'true',
 		'--v3-signing-enabled', 'true',
