@@ -8,9 +8,15 @@
 
 	export default {
 		data() {
-			return {};
+			return {
+				routed: false
+			};
 		},
-		onLoad() {
+		onShow() {
+			// 放在 onShow 而不是 onLoad：此时页面栈已经就绪，reLaunch 更稳
+			// routed 标记避免重复跳转
+			if (this.routed) return;
+			this.routed = true;
 			// 判断逻辑统一放在 common/launch.js 里，页面只负责调用
 			launch.routeFromLaunch();
 		}

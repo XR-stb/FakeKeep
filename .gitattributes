@@ -1,0 +1,14 @@
+# 统一换行符，避免 Windows / macOS 协作时整文件 diff
+* text=auto eol=lf
+
+# 二进制资源不要做换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.apk binary
+*.wgt binary
+*.ttf binary
+*.woff binary
+*.woff2 binary

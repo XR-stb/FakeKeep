@@ -186,22 +186,13 @@
 
 	export default {
 		data() {
-			var winW = 375;
-			var statusBarHeight = 0;
-			try {
-				var info = uni.getSystemInfoSync();
-				winW = info.windowWidth || winW;
-				statusBarHeight = info.statusBarHeight || 0;
-			} catch (e) {
-				// 拿不到设备信息时用默认值
-			}
-			var canvasW = Math.round(winW * 0.9);
-			var canvasH = Math.round((canvasW * trackCard.DESIGN.height) / trackCard.DESIGN.width);
-
+			// 先给一份保守的默认值，真正的尺寸在 onLoad 里按设备宽度算，
+			// 这样首屏渲染时 canvas 就已经是最终尺寸
+			var defaultW = 338;
 			return {
-				canvasW: canvasW,
-				canvasH: canvasH,
-				statusBarHeight: statusBarHeight,
+				canvasW: defaultW,
+				canvasH: Math.round((defaultW * trackCard.DESIGN.height) / trackCard.DESIGN.width),
+				statusBarHeight: 0,
 				form: trackState.createDefaultForm(),
 				auto: trackState.createAutoFlags(),
 				customBackground: null,
@@ -223,6 +214,17 @@
 			}
 		},
 		onLoad: function () {
+			// 按设备宽度算画布尺寸（onLoad 早于首屏渲染，不会出现尺寸跳变）
+			try {
+				var info = uni.getSystemInfoSync();
+				var winW = info.windowWidth || 375;
+				this.statusBarHeight = info.statusBarHeight || 0;
+				this.canvasW = Math.round(winW * 0.9);
+				this.canvasH = Math.round((this.canvasW * trackCard.DESIGN.height) / trackCard.DESIGN.width);
+			} catch (e) {
+				console.warn('[FakeKeep] 获取设备信息失败，使用默认画布尺寸', e);
+			}
+
 			// 读取上次填的内容，避免每次都要重填
 			try {
 				var saved = uni.getStorageSync('trackForm');
