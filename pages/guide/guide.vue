@@ -1,14 +1,13 @@
 <template>
 	<view class="home">
-		<!--circular用来设置循环轮播   indicator-dots设置下面小圆点用来点击 -->
-		<swiper circular indicator-dots>
-			<!-- v-for循环遍历数组 -->
-			<swiper-item v-for="item in swipers">
-				<image :src="item" mode="widthFix heightFix"></image>
+		<!-- circular 用来设置循环轮播，indicator-dots 设置下方小圆点 -->
+		<swiper class="guide-swiper" circular indicator-dots :indicator-active-color="'#0EBA3A'">
+			<swiper-item v-for="(item, index) in swipers" :key="index">
+				<image :src="item" mode="aspectFit"></image>
 			</swiper-item>
 		</swiper>
-		<view class="to-index" v-on:click="to_index">
-			<button class="button-biankuang" hover-class="bg-click">去首页</button>
+		<view class="to-index" @click="toIndex">
+			<button class="button-biankuang" hover-class="bg-click">进入首页</button>
 		</view>
 	</view>
 </template>
@@ -17,63 +16,65 @@
 	export default {
 		data() {
 			return {
-				swipers:[
+				swipers: [
 					'../../static/guide1.png',
 					'../../static/guide2.png'
 				]
-			}
+			};
 		},
 		methods: {
-			to_index() {
-				uni.navigateTo({
-					url:'../index/index'
-				});
-			}
-		},
-		onLaunch(){
-			// 从本地缓存中同步获取指定 key 对应的内容，用于判断是否是第一次打开应用
-			if (uni.getStorageSync('launchFlag')) {
-				console.log(111)
-				uni.redirectTo({
-					url:'../index/index'
+			toIndex() {
+				// 引导页是启动后的第一个页面，用 reLaunch 避免返回时又回到引导页
+				uni.reLaunch({
+					url: '../index/index'
 				});
 			}
 		}
-	}
+	};
 </script>
 
-<!-- 开启scss -->
+<!-- 开启 scss -->
 <style lang="scss">
-	.home{
-		margin-top: 80rpx;
-		height: 90vh;
-		swiper{
-			width: 100%;
-			height: 90vh;
-			image{
-				width: 100%;
-				height: 100%;
-			}
-		}
+	.home {
+		display: flex;
+		flex-direction: column;
+		width: 100vw;
+		height: 100vh;
+		background-color: #ffffff;
 	}
-	.to-index {
-		margin-top: 0rpx;
-	}
-	.button-biankuang{
-			width: 200rpx;
-			height: 50rpx;
-			display: flex;
-			margin-top: 30rpx;
-			line-height: 50rpx;
-			justify-content: center;
-			border-radius: 25px;
-			border: 3rpx solid #6699FF;
-			font-size: 28rpx;
-		}
-	.bg-click {
-			top: 3upx;
-			background-color: rgb(241,242,246);;
-			opacity: 70%;
-		}
 
+	.guide-swiper {
+		flex: 1;
+		width: 100%;
+
+		image {
+			width: 100%;
+			height: 100%;
+		}
+	}
+
+	.to-index {
+		padding: 20rpx 0 60rpx 0;
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+	}
+
+	.button-biankuang {
+		width: 300rpx;
+		height: 80rpx;
+		line-height: 80rpx;
+		display: flex;
+		justify-content: center;
+		border-radius: 40rpx;
+		border: 2rpx solid #0eba3a;
+		color: #0eba3a;
+		font-size: 30rpx;
+		background-color: #ffffff;
+	}
+
+	.bg-click {
+		background-color: #f1f2f6;
+		opacity: 0.7;
+	}
 </style>

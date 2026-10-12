@@ -1,11 +1,26 @@
 {
-  "name": "yourkeep",
-  "version": "1.0.0",
-  "description": "",
+  "name": "fakekeep",
+  "version": "1.1.0",
+  "description": "Keep 风格的跑步记录 / 轨迹截图生成器（uni-app，Vue2）",
   "main": "main.js",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node tools/test-core.js",
+    "lint": "node tools/check.js",
+    "verify": "npm run lint && npm test",
+    "preview": "node tools/preview.js",
+    "gen:maps": "node tools/gen-maps.js"
   },
-  "author": "",
-  "license": "ISC"
+  "keywords": [
+    "uni-app",
+    "keep",
+    "running",
+    "screenshot",
+    "canvas"
+  ],
+  "author": "XR-stb",
+  "license": "ISC",
+  "devDependencies": {
+    "vue-template-compiler": "^2.7.16"
+  }
 }

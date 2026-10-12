@@ -1,0 +1,20 @@
+# 依赖
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# uni-app / HBuilderX 构建产物（保留在本地，不要提交）
+unpackage/
+.hbuilderx/launch.json
+
+# 离线工具的临时输出
+tools/out/
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.log

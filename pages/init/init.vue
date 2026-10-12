@@ -1,38 +1,26 @@
-
 <template>
+	<!-- 启动中转页：不渲染任何内容，只负责决定进引导页还是首页 -->
+	<view class="init"></view>
 </template>
 
 <script>
+	import launch from '@/common/launch.js';
+
 	export default {
 		data() {
-			return {
-				
-			}
+			return {};
 		},
 		onLoad() {
-			// console.log("init");
-			// 从本地缓存中同步获取指定 key 对应的内容，用于判断是否是第一次打开应用
-			const value = uni.getStorage('launchFlag');
-			if (value) {
-				// console.log(111)
-				uni.redirectTo({
-					url:'../index/index'
-				});
-			} else {
-				// console.log(222)
-				// 没有值，跳到引导页，并存储，下次打开就不会进去引导页
-				uni.setStorageSync({
-					key: 'launchFlag',
-					data: true
-				});
-				uni.redirectTo({
-					url: '../guide/guide'
-				});
-			}
+			// 判断逻辑统一放在 common/launch.js 里，页面只负责调用
+			launch.routeFromLaunch();
 		}
-	}
-	
+	};
 </script>
 
 <style>
+	.init {
+		width: 100vw;
+		height: 100vh;
+		background-color: #ffffff;
+	}
 </style>

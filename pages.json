@@ -1,7 +1,9 @@
 {
-	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+	// pages 数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+	"pages": [
 		{
-			"path": "pages/index/index",
+			// 启动中转页：只做「首次启动 -> 引导页 / 否则 -> 首页」的判断
+			"path": "pages/init/init",
 			"style": {
 				"navigationStyle": "custom"
 			}
@@ -11,15 +13,32 @@
 			"style": {
 				"navigationStyle": "custom",
 				"app-plus": {
-					"titleNView": false	
+					"titleNView": false
+				}
+			}
+		},
+		{
+			// 跑步主页：个人跑步数据 + 跑步记录列表
+			"path": "pages/index/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			// 轨迹截图页：可编辑全部运动参数并更换背景地图（Issue #1）
+			"path": "pages/track/track",
+			"style": {
+				"navigationStyle": "custom",
+				"app-plus": {
+					"titleNView": false
 				}
 			}
 		}
-    ],
+	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
+		"navigationBarTitleText": "FakeKeep",
 		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
+		"backgroundColor": "#F4F5F7"
 	}
 }
